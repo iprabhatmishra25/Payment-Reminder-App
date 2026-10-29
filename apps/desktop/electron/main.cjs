@@ -43,7 +43,7 @@ app.whenReady().then(async()=>{
     return net.fetch(pathToFileURL(target).href);
   });
   session.defaultSession.setPermissionRequestHandler((_webContents,_permission,callback)=>callback(false));
-  window=new BrowserWindow({width:1440,height:940,minWidth:1000,minHeight:720,backgroundColor:'#f6f7f9',title:'Duewise — Payment Workspace',webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true}});
+  window=new BrowserWindow({width:1440,height:940,minWidth:1000,minHeight:720,backgroundColor:'#f6f7f9',icon:path.join(__dirname,'../build/icon.png'),title:'Duewise — Payment Workspace',webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true}});
   window.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   window.webContents.on('will-navigate',(event)=>event.preventDefault());
   ipcMain.handle('duewise:request',(event,input)=>{validSender(event);return request(input);});

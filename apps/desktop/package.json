@@ -1,6 +1,6 @@
 {
   "name": "duewise-desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Duewise payment tracking and monthly reminder desktop application",
@@ -9,9 +9,9 @@
     "dev": "vite --host 127.0.0.1",
     "desktop": "electron .",
     "build": "tsc --noEmit && vite build",
-    "package:linux": "npm run build && electron-builder --linux AppImage",
-    "package:win": "npm run build && electron-builder --win nsis",
-    "package:mac": "npm run build && electron-builder --mac dmg",
+    "package:linux": "npm run build && electron-builder --linux AppImage deb --x64 --publish never",
+    "package:win": "npm run build && electron-builder --win nsis --x64 --publish never",
+    "package:mac": "npm run build && electron-builder --mac dmg --publish never",
     "test:e2e": "node ../../tests/e2e/desktop.cjs"
   },
   "build": {
@@ -22,26 +22,58 @@
       "electron/**/*",
       "package.json",
       "build/icon.png",
-      "!node_modules/**"
+      "!node_modules/**",
+      "build/icon.ico"
     ],
     "directories": {
       "output": "release"
     },
     "asar": true,
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "Duewise-${version}-Windows-${arch}-Setup.${ext}"
     },
     "linux": {
       "target": [
-        "AppImage"
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "category": "Office",
       "icon": "build/icon.png",
-      "syncDesktopName": true
+      "syncDesktopName": true,
+      "artifactName": "Duewise-${version}-Ubuntu-${arch}.${ext}",
+      "maintainer": "Duewise maintainers <299376141+iprabhatmishra25@users.noreply.github.com>"
     },
     "mac": {
       "target": "dmg",
       "hardenedRuntime": true
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": false,
+      "shortcutName": "Duewise"
     }
   },
   "dependencies": {
@@ -61,5 +93,11 @@
     "vite": "8.3.5"
   },
   "author": "Duewise",
-  "desktopName": "Duewise.desktop"
+  "desktopName": "Duewise.desktop",
+  "license": "MIT",
+  "homepage": "https://github.com/iprabhatmishra25/Payment-Reminder-App#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iprabhatmishra25/Payment-Reminder-App.git"
+  }
 }

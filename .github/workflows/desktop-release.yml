@@ -1,26 +1,103 @@
-name: Desktop packages
-on: workflow_dispatch
+name: Windows and Ubuntu desktop
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'services/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - '.github/workflows/desktop-release.yml'
+      - 'Start-Demo-Windows.cmd'
+      - 'start-demo-ubuntu.sh'
+  pull_request:
+    paths:
+      - 'apps/**'
+      - 'services/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - '.github/workflows/desktop-release.yml'
+permissions:
+  contents: read
 jobs:
-  package:
+  package-and-test:
+    name: ${{ matrix.platform }} x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - {os: windows-latest, command: 'npm run package:win', pattern: 'apps/desktop/release/*.exe'}
-          - {os: macos-latest, command: 'npm run package:mac', pattern: 'apps/desktop/release/*.dmg'}
-          - {os: ubuntu-latest, command: 'npm run build && npx electron-builder --linux AppImage', pattern: 'apps/desktop/release/*.AppImage'}
-    runs-on: ${{ matrix.os }}
+          - {os: windows-latest, platform: Windows, command: package-windows}
+          - {os: ubuntu-24.04, platform: Ubuntu, command: package-ubuntu}
+    env:
+      PYTHONUTF8: '1'
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
       - uses: actions/setup-node@v4
-        with: {node-version: '24'}
-      - run: npm ci
-        working-directory: apps/desktop
-      - run: ${{ matrix.command }}
-        working-directory: apps/desktop
+        with: {node-version: '24', cache: npm, cache-dependency-path: apps/desktop/package-lock.json}
+      - name: Ubuntu desktop build prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb xauth fakeroot libgtk-3-0 libnss3 libasound2t64 libgbm1
+      - name: Install Python and desktop dependencies
+        run: python scripts/setup.py --no-config
+      - name: Check portable launch helpers
+        run: python -m unittest discover -s tests/platform -v
+      - name: Test native local backend
+        run: python scripts/backend.py test
+      - name: Build native installers
+        run: python scripts/desktop.py ${{ matrix.command }}
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-      - uses: actions/upload-artifact@v4
+      - name: Install Windows app into a path containing spaces
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem 'apps/desktop/release/*-Windows-x64-Setup.exe' | Select-Object -First 1
+          if (-not $installer) { throw 'Windows installer is missing' }
+          $installDir = Join-Path $env:RUNNER_TEMP 'Duewise Installed'
+          $process = Start-Process -FilePath $installer.FullName -ArgumentList @('/S', "/D=$installDir") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Installer exited with $($process.ExitCode)" }
+          $binary = Join-Path $installDir 'Duewise.exe'
+          if (-not (Test-Path $binary)) { throw "Installed application was not found at $binary" }
+          "DUEWISE_PACKAGED_BINARY=$binary" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Install Ubuntu deb package
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          deb="$(find apps/desktop/release -maxdepth 1 -name '*-Ubuntu-x64.deb' -print -quit)"
+          test -n "$deb"
+          sudo apt-get install -y "$PWD/$deb"
+          binary="$(find /opt/Duewise -maxdepth 1 -name duewise-desktop -type f -print -quit)"
+          test -x "$binary"
+          printf 'DUEWISE_PACKAGED_BINARY=%s\n' "$binary" >> "$GITHUB_ENV"
+      - name: Test installed Windows desktop
+        if: runner.os == 'Windows'
+        run: node tests/e2e/desktop.cjs
+      - name: Test installed Ubuntu desktop
+        if: runner.os == 'Linux'
+        run: xvfb-run -a node tests/e2e/desktop.cjs
+      - name: Upload Windows installer
+        if: success() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
         with:
-          name: duewise-${{ matrix.os }}
-          path: ${{ matrix.pattern }}
+          name: Duewise-Windows-x64
+          path: apps/desktop/release/*-Windows-x64-Setup.exe
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload Ubuntu installers
+        if: success() && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Duewise-Ubuntu-x64
+          path: |
+            apps/desktop/release/*-Ubuntu-x64.deb
+            apps/desktop/release/*-Ubuntu-x64.AppImage
+          if-no-files-found: error
+          retention-days: 30

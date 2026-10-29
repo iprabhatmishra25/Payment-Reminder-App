@@ -50,3 +50,9 @@ These are checks performed during implementation, not a claim that a production 
 ## Before real use
 
 Run the PostgreSQL CI job, configure the always-on server and sender domain, enroll staff MFA, test a recipient allowlist, verify HTTPS, sign/distribute target installers, rehearse restoration, and reconcile one pilot reminder cycle with accounts staff.
+
+## Windows and Ubuntu release 0.1.1
+
+The cross-platform workflow adds native Windows and Ubuntu 24.04 x64 jobs. Each installs Python/Node dependencies, runs portable launcher regression checks, tests the local backend, builds the native installers, installs the Windows/Ubuntu desktop package, and runs the real Electron payment/reminder journey. Successful installer artifacts are uploaded only after that platform's checks pass.
+
+The original results above describe the initial 0.1.0 implementation. For current 0.1.1 results and downloads, use the [Windows and Ubuntu desktop workflow](https://github.com/iprabhatmishra25/Payment-Reminder-App/actions/workflows/desktop-release.yml). Its run result is the evidence of platform verification; workflow configuration alone is not a test result. The separate PostgreSQL CI job remains enabled.

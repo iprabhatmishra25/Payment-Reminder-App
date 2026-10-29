@@ -17,33 +17,27 @@ A working version-one desktop application for company invoices, verified payment
 
 The first version has one operating business, INR currency, one billing contact per company, and one invoice per payment entry. Banking/payment-gateway integration, multi-invoice receipt allocation, refunds/credits/overpayments, offline writes, and automatic desktop updates are not included.
 
-## 1. Start a local demo on Ubuntu
+## 1. Start a local demo on Windows or Ubuntu
 
-Install Python 3.12+, a supported Node.js LTS (tested with Node 24), npm, and Git. A normal graphical desktop session is needed for Electron. Do not run the desktop as root.
+Native x64 installers are produced for **Windows (`.exe`)** and **Ubuntu (`.deb` and `.AppImage`)**. See [Windows and Ubuntu setup](docs/WINDOWS_UBUNTU.md) for installer downloads and step-by-step instructions. Desktop clients can share one always-on backend.
 
-Extract this project and open a terminal in its top-level directory:
+For source/demo use, install Python 3.12, Node.js 24 LTS (including npm), and Git. Use a normal graphical desktop session.
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r services/backend/requirements.lock.txt
+Windows PowerShell or Command Prompt:
+
+```powershell
+py -3.12 scripts/setup.py --demo
+py -3.12 scripts/run_local.py --demo
 ```
 
-Install the desktop dependencies:
+Ubuntu:
 
 ```bash
-cd apps/desktop
-npm ci
-cd ../..
+python3 scripts/setup.py --demo
+python3 scripts/run_local.py --demo
 ```
 
-Launch the complete local demo:
-
-```bash
-python scripts/run_local.py --demo
-```
-
-The launcher creates a private local `.env`, applies migrations, seeds sample records, and starts the API, a preview-only worker, Vite, and Electron. The demo stores data in `services/backend/duewise.db`.
+No virtual-environment activation or PowerShell policy change is needed. The root `Start-Demo-Windows.cmd` and `start-demo-ubuntu.sh` launchers are also provided. Setup creates the virtual environment and installs dependencies; the launcher applies migrations, seeds labeled sample data, and starts the API, preview-only worker, Vite, and Electron. The local demo database is `services/backend/duewise.db`.
 
 Demo credentials:
 
@@ -72,19 +66,19 @@ python scripts/configure.py
 
 For manual backend commands, load the root configuration in the current terminal using Python dotenv's runner, or set environment variables in your normal environment. The launcher loads the root `.env` automatically.
 
-For a simple local SQLite start, defaults work, but MFA requires the generated encryption key. The following portable Python snippet applies migrations with the root configuration:
+For an empty local workspace, run `scripts/setup.py` without `--demo`, then use the portable backend commands. On Windows use `py -3.12` instead of `python3`:
 
 ```bash
-cd services/backend
-../../.venv/bin/python -c "from dotenv import load_dotenv; load_dotenv('../../.env'); from alembic.config import Config; from alembic import command; command.upgrade(Config('alembic.ini'), 'head')"
-../../.venv/bin/python -c "from dotenv import load_dotenv; load_dotenv('../../.env'); from app.cli import main; main()" create-admin --email admin@your-company.com --name "Your Name"
-cd ../..
-python scripts/run_local.py
+python3 scripts/backend.py migrate
+python3 scripts/backend.py create-admin --email admin@your-company.com --name "Your Name"
+python3 scripts/run_local.py
 ```
 
 The administrator password is entered interactively and is never embedded in code or a shell argument. For actual shared use, use PostgreSQL and the deployment steps below.
 
 ## 3. Use PostgreSQL and the background services
+
+The shared server runs on Ubuntu or in Linux containers. Windows hosts can use Docker Desktop with WSL2. Native Windows production Celery workers are not supported; Windows desktop clients use the same HTTPS API.
 
 Install Docker Engine and the Compose plugin on an always-on Linux server.
 
@@ -182,13 +176,21 @@ Reports are operational and restatable when staff enter backdated corrections; t
 
 ## 7. Package the desktop
 
-```bash
-cd apps/desktop
-npm run build
-npm run package:linux
+Build each installer on its native platform, or use the automatic [Windows and Ubuntu desktop workflow](https://github.com/iprabhatmishra25/Payment-Reminder-App/actions/workflows/desktop-release.yml).
+
+Windows:
+
+```powershell
+py -3.12 scripts/desktop.py package-windows
 ```
 
-Use `npm run package:win` on Windows and `npm run package:mac` on macOS. Packaging/signing resources may require network access and platform-specific credentials. The release workflow builds on each native operating system. Configure code-signing certificates and macOS notarization before distributing production installers. No signing credentials are included.
+Ubuntu:
+
+```bash
+python3 scripts/desktop.py package-ubuntu
+```
+
+Outputs are under `apps/desktop/release`: a per-user Windows NSIS installer, an Ubuntu Debian package, and an AppImage. The native workflow installs the Windows/Ubuntu packages and runs an actual Electron smoke journey before exposing successful installer artifacts. Signing credentials are optional for CI test packages and required for trusted organizational distribution; none are embedded in source. macOS is outside this release's verified matrix.
 
 The login screen's **Server** setting accepts an HTTPS server origin, or loopback HTTP for local development. It saves only that non-secret origin. An administrator can alternatively set `DUEWISE_API_URL` before launch. Remote HTTP URLs are rejected.
 
