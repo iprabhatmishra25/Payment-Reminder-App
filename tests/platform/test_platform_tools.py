@@ -29,7 +29,7 @@ class PlatformToolsTests(unittest.TestCase):
             try:link.symlink_to(cli)
             except OSError:self.skipTest('Symlink creation is not permitted on this runner')
             with patch.object(tools.platform,'system',return_value='Linux'),patch.object(tools.shutil,'which',side_effect=lambda name:str(root/'node') if name=='node' else str(link)):
-                self.assertEqual(tools.npm_command('ci'),[str(root/'node'),str(cli),'ci'])
+                self.assertEqual(tools.npm_command('ci'),[str(root/'node'),str(cli.resolve()),'ci'])
 
     def test_missing_node_reports_setup_instruction(self):
         with patch.object(tools.shutil,'which',return_value=None):

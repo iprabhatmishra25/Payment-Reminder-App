@@ -71,7 +71,7 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          deb="$(find apps/desktop/release -maxdepth 1 -name '*-Ubuntu-x64.deb' -print -quit)"
+          deb="$(find apps/desktop/release -maxdepth 1 -name '*-Ubuntu-*.deb' -print -quit)"
           test -n "$deb"
           sudo apt-get install -y "$PWD/$deb"
           binary="$(find /opt/Duewise -maxdepth 1 -name duewise-desktop -type f -print -quit)"
@@ -97,7 +97,7 @@ jobs:
         with:
           name: Duewise-Ubuntu-x64
           path: |
-            apps/desktop/release/*-Ubuntu-x64.deb
-            apps/desktop/release/*-Ubuntu-x64.AppImage
+            apps/desktop/release/*-Ubuntu-*.deb
+            apps/desktop/release/*-Ubuntu-*.AppImage
           if-no-files-found: error
           retention-days: 30

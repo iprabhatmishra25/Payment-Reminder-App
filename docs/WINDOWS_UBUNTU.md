@@ -6,7 +6,7 @@ Version 0.1.1 provides native x64 desktop packages for Windows and Ubuntu. Both 
 
 | Use | Windows | Ubuntu |
 |---|---|---|
-| Installed desktop client | `Duewise-0.1.1-Windows-x64-Setup.exe` | `Duewise-0.1.1-Ubuntu-x64.deb` (recommended), or `.AppImage` |
+| Installed desktop client | `Duewise-0.1.1-Windows-x64-Setup.exe` | `Duewise-0.1.1-Ubuntu-amd64.deb` (recommended), or `.AppImage` |
 | Source/demo | Python 3.12 and Node.js 24 LTS | Python 3.12, venv support, and Node.js 24 LTS |
 | Shared production server | Linux containers in Docker Desktop/WSL2, or a separate Ubuntu server | Docker Engine and Compose |
 
@@ -33,7 +33,7 @@ The CI build is unsigned unless signing secrets are configured. Windows can disp
 Install the recommended `.deb` package from a terminal in the download folder:
 
 ```bash
-sudo apt install ./Duewise-0.1.1-Ubuntu-x64.deb
+sudo apt install ./Duewise-0.1.1-Ubuntu-amd64.deb
 ```
 
 Open Duewise from the Applications menu and set the backend server on the login screen.
@@ -41,8 +41,8 @@ Open Duewise from the Applications menu and set the backend server on the login 
 Alternatively, use the AppImage:
 
 ```bash
-chmod +x Duewise-0.1.1-Ubuntu-x64.AppImage
-./Duewise-0.1.1-Ubuntu-x64.AppImage
+chmod +x Duewise-0.1.1-Ubuntu-x86_64.AppImage
+./Duewise-0.1.1-Ubuntu-x86_64.AppImage
 ```
 
 If the AppImage reports a missing FUSE component or sandbox setup problem on your Ubuntu installation, use the `.deb` package, which installs the native integration and sandbox helper. Do not run the application as root or add `--no-sandbox` as a normal workaround.
