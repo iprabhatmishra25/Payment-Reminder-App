@@ -76,12 +76,14 @@ async function run(){
  await page.getByRole('dialog').waitFor({state:'hidden'});
  await page.getByText('queued',{exact:true}).first().waitFor();
  console.log('PASS reminder preview and durable queue');
+ // Exercise navigation on a short/high-DPI desktop without forcing clicks.
+ await page.setViewportSize({width:1024,height:600});
  await page.locator('.sidebar-bottom').getByRole('button',{name:'Settings',exact:true}).click();
  await page.getByRole('heading',{name:'Monthly reminder schedule'}).waitFor();
  await page.getByLabel('Day of month',{exact:true}).fill('7');
  await page.getByRole('button',{name:'Save schedule',exact:true}).click();
  await page.getByText('Reminder schedule saved',{exact:true}).waitFor();
- console.log('PASS settings and server-side policy persistence');
+ console.log('PASS short-window settings navigation and server-side policy persistence');
  await page.getByRole('button',{name:'Sign out',exact:true}).click();
  await page.getByRole('heading',{name:'Welcome back'}).waitFor();
  assert.deepEqual(errors,[],'Renderer errors: '+errors.join('; '));

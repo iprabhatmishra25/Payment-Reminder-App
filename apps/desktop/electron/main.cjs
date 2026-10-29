@@ -1,4 +1,4 @@
-const {app,BrowserWindow,ipcMain,protocol,net,dialog,session}=require('electron');
+const {app,BrowserWindow,ipcMain,protocol,net,dialog,session,screen}=require('electron');
 const path=require('node:path');
 const fs=require('node:fs/promises');
 const {pathToFileURL}=require('node:url');
@@ -43,7 +43,8 @@ app.whenReady().then(async()=>{
     return net.fetch(pathToFileURL(target).href);
   });
   session.defaultSession.setPermissionRequestHandler((_webContents,_permission,callback)=>callback(false));
-  window=new BrowserWindow({width:1440,height:940,minWidth:1000,minHeight:720,backgroundColor:'#f6f7f9',icon:path.join(__dirname,'../build/icon.png'),title:'Duewise — Payment Workspace',webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true}});
+  const workArea=screen.getPrimaryDisplay().workAreaSize;
+  window=new BrowserWindow({width:Math.min(1440,workArea.width),height:Math.min(940,workArea.height),minWidth:Math.min(1000,workArea.width),minHeight:Math.min(600,workArea.height),backgroundColor:'#f6f7f9',icon:path.join(__dirname,'../build/icon.png'),title:'Duewise — Payment Workspace',webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true}});
   window.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   window.webContents.on('will-navigate',(event)=>event.preventDefault());
   ipcMain.handle('duewise:request',(event,input)=>{validSender(event);return request(input);});

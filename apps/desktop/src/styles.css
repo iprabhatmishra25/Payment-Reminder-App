@@ -7,3 +7,8 @@
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition:none!important}}
 
 .server-connection{margin-top:22px}.server-connection>button{border:0;background:none;color:#9aaba2;font-size:9px;display:flex;align-items:center;justify-content:center;gap:7px;width:100%}.server-connection form{display:flex;gap:9px}.server-connection input{font-size:11px;flex:1;min-width:0}
+
+/* Keep navigation reachable on short windows and scaled Windows displays. */
+.sidebar{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#506b70 transparent}
+.sidebar>*{flex-shrink:0}
+@media(max-height:850px){.sidebar-tip{display:none}.workspace-switch{margin-top:24px;margin-bottom:18px}.sidebar-bottom{padding-top:12px}}
