@@ -1,0 +1,81 @@
+name: duewise
+x-app: &app
+  build:
+    context: ..
+    dockerfile: infra/Dockerfile.backend
+  env_file: ../.env
+  environment: &app-env
+    DATABASE_URL: postgresql+psycopg://duewise:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/duewise
+    REDIS_URL: redis://redis:6379/0
+  restart: unless-stopped
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: duewise
+      POSTGRES_USER: duewise
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes: [postgres-data:/var/lib/postgresql]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U duewise -d duewise']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --appendonly, 'yes']
+    volumes: [redis-data:/data]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+  migrate:
+    <<: *app
+    restart: 'no'
+    command: [alembic, upgrade, head]
+    depends_on:
+      db: {condition: service_healthy}
+  api:
+    <<: *app
+    ports: ['127.0.0.1:8000:8000']
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready')"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+  worker:
+    <<: *app
+    command: [celery, -A, 'app.jobs:celery', worker, --loglevel=INFO, --concurrency=2]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+  scheduler:
+    <<: *app
+    command: [celery, -A, 'app.jobs:celery', beat, --loglevel=INFO, --schedule=/tmp/duewise-beat]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+  proxy:
+    image: caddy:2-alpine
+    profiles: [https]
+    ports: ['80:80','443:443']
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?Set PUBLIC_HOST in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+volumes:
+  postgres-data:
+  redis-data:
+  caddy-data:
+  caddy-config:

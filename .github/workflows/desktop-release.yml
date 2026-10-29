@@ -1,0 +1,26 @@
+name: Desktop packages
+on: workflow_dispatch
+jobs:
+  package:
+    strategy:
+      matrix:
+        include:
+          - {os: windows-latest, command: 'npm run package:win', pattern: 'apps/desktop/release/*.exe'}
+          - {os: macos-latest, command: 'npm run package:mac', pattern: 'apps/desktop/release/*.dmg'}
+          - {os: ubuntu-latest, command: 'npm run build && npx electron-builder --linux AppImage', pattern: 'apps/desktop/release/*.AppImage'}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm ci
+        working-directory: apps/desktop
+      - run: ${{ matrix.command }}
+        working-directory: apps/desktop
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: duewise-${{ matrix.os }}
+          path: ${{ matrix.pattern }}
