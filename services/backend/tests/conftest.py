@@ -5,7 +5,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 os.environ.setdefault('APP_ENV','development')
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine,event
 from sqlalchemy.orm import sessionmaker
 from cryptography.fernet import Fernet
 from app import db as models, main, security, jobs
@@ -16,6 +16,12 @@ from app.config import config
 def env(tmp_path,monkeypatch):
     url=os.environ.get('TEST_DATABASE_URL') or f'sqlite:///{tmp_path}/test.db'
     engine=create_engine(url,connect_args={'check_same_thread':False,'timeout':30} if url.startswith('sqlite') else {})
+    if url.startswith('sqlite'):
+        # Match the application's SQLite mode, including on Windows NTFS.
+        @event.listens_for(engine,'connect')
+        def sqlite_pragmas(connection,_):
+            connection.execute('PRAGMA foreign_keys=ON')
+            connection.execute('PRAGMA journal_mode=WAL')
     models.Base.metadata.drop_all(engine)
     models.Base.metadata.create_all(engine)
     factory=sessionmaker(engine,expire_on_commit=False)

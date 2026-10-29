@@ -15,7 +15,7 @@ const desktop=path.join(root,'apps/desktop'),backend=path.join(root,'services/ba
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'duewise-e2e-'));
 const python=process.env.DUEWISE_TEST_PYTHON||path.join(root,'.venv',process.platform==='win32'?'Scripts/python.exe':'bin/python');
 const env={...process.env,APP_ENV:'development',DEMO_MODE:'true',EMAIL_MODE:'preview',DATABASE_URL:'sqlite:///'+path.join(temp,'qa.db').replaceAll('\\','/'),ENCRYPTION_KEY:Buffer.alloc(32,7).toString('base64url')+'=',DUEWISE_API_URL:'http://127.0.0.1:8000',DUEWISE_DEV:process.env.DUEWISE_PACKAGED_BINARY?'0':'1'};
-const processes=[];let electron;
+const processes=[];let electron,page;
 function start(command,args,cwd,extra={}){const p=spawn(command,args,{cwd,env:{...env,...extra},stdio:['ignore','pipe','pipe']});p.stdout.on('data',()=>{});p.stderr.on('data',data=>{if(command.includes('Xvfb'))process.stderr.write(data);});processes.push(p);return p;}
 async function ready(url){const end=Date.now()+30000;while(Date.now()<end){try{if((await fetch(url)).ok)return;}catch{}await new Promise(r=>setTimeout(r,200));}throw Error('Not ready: '+url);}
 async function run(){
@@ -26,10 +26,16 @@ async function run(){
  await ready('http://127.0.0.1:8000/health/live');
  if(!process.env.DUEWISE_PACKAGED_BINARY)await ready('http://127.0.0.1:5173');
  electron=await _electron.launch({executablePath:process.env.DUEWISE_PACKAGED_BINARY||requireDesktop('electron'),args:[...(process.getuid?.()===0?['--no-sandbox']:[]),'--disable-gpu',...(process.env.DUEWISE_PACKAGED_BINARY?[]:[desktop])],env,timeout:30000});
- const page=await electron.firstWindow();await page.waitForLoadState('domcontentloaded');
+ page=await electron.firstWindow();await page.waitForLoadState('domcontentloaded');
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ // Enter credentials as a user would; do not race the optional async demo autofill.
+ await page.getByLabel('Work email',{exact:true}).fill('demo@duewise.example.com');
+ await page.getByLabel('Password',{exact:true}).fill('DemoOnly!2026');
  await page.getByRole('button',{name:'Sign in to workspace'}).click();
- await page.getByRole('heading',{name:'Overview.'}).waitFor();
+ await Promise.race([
+   page.getByRole('heading',{name:'Overview.'}).waitFor(),
+   page.getByRole('alert').waitFor().then(async()=>{throw Error('Sign-in failed: '+await page.getByRole('alert').innerText());})
+ ]);
  await page.getByText('Payments collected',{exact:true}).waitFor();
  await page.getByText('Northstar Technologies',{exact:true}).waitFor();
  await page.locator('.recharts-pie-sector path').first().waitFor();
@@ -81,4 +87,4 @@ async function run(){
  assert.deepEqual(errors,[],'Renderer errors: '+errors.join('; '));
  console.log('PASS logout; no uncaught renderer errors');
 }
-run().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{if(electron)await electron.close();await Promise.all(processes.reverse().map(p=>new Promise(resolve=>{if(p.exitCode!==null)return resolve();p.once('exit',resolve);p.kill('SIGTERM');const timer=setTimeout(()=>{p.kill('SIGKILL');resolve();},5000);timer.unref();})));fs.rmSync(temp,{recursive:true,force:true,maxRetries:10,retryDelay:200});});
+run().catch(async error=>{console.error(error);if(page)console.error('Visible form errors:',await page.locator('.form-error').allTextContents().catch(()=>[]));process.exitCode=1;}).finally(async()=>{if(electron)await electron.close();await Promise.all(processes.reverse().map(p=>new Promise(resolve=>{if(p.exitCode!==null)return resolve();p.once('exit',resolve);p.kill('SIGTERM');const timer=setTimeout(()=>{p.kill('SIGKILL');resolve();},5000);timer.unref();})));fs.rmSync(temp,{recursive:true,force:true,maxRetries:10,retryDelay:200});});
