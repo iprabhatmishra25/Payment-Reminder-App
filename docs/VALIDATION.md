@@ -5,6 +5,10 @@ These are checks performed during implementation, not a claim that a production 
 | Check | Observed result |
 |---|---|
 | Backend automated suite | 40 tests passed on a fresh SQLite database |
+| PostgreSQL 18 runtime | 40 tests and Alembic migration passed in GitHub Actions |
+| Windows x64 release 0.1.1 | NSIS installer built, installed into a path containing spaces, and installed-app end-to-end journey passed |
+| Ubuntu 24.04 x64 release 0.1.1 | `.deb` and AppImage built; `.deb` installed and installed-app end-to-end journey passed |
+| Portable setup helpers | 8 regression tests passed on each native platform |
 | TypeScript validation | Passed using `tsc --noEmit` |
 | Production React build | Passed using Vite |
 | Electron development end-to-end journey | Passed in the actual Electron main/preload/renderer runtime |
@@ -24,7 +28,7 @@ These are checks performed during implementation, not a claim that a production 
 4. Create a posted invoice for that company.
 5. Record a partial payment and verify the refreshed remaining balance/status.
 6. Preview overdue reminders and queue a durable run.
-7. Save a monthly schedule setting on the server.
+7. Resize to a 1024-by-600 viewport, reach Settings, and save a monthly schedule setting on the server.
 8. Sign out; verify no uncaught renderer errors during the journey.
 
 ## Backend coverage
@@ -40,19 +44,23 @@ These are checks performed during implementation, not a claim that a production 
 
 ## Verification limits
 
-- The execution environment could not run PostgreSQL under its restricted single-user namespace. PostgreSQL runtime/concurrency tests are provided in GitHub CI and must pass on the target environment before production use. SQLite passing does not establish identical PostgreSQL behavior.
+- PostgreSQL could not run in the initial local execution environment. The subsequent GitHub Actions PostgreSQL 18 service passed all 40 backend tests and the database migration. A production server still needs its own deployment checks.
 - Docker Compose was inspected and parsed, but Docker services were not launched here.
 - No real email credentials were supplied. Live Resend delivery and real provider callbacks were not exercised; adapter outcomes and signatures were tested with controlled test data.
-- Windows/macOS installers, code signing, notarization, backups/restoration on a real server, and actual monthly unattended operation need target-environment validation.
+- Windows and Ubuntu installers were verified on native CI runners, rather than on the user's personal computers. The AppImage was built; the Ubuntu installed-app journey used the `.deb`. macOS, code signing, notarization, backups/restoration on a real server, and actual monthly unattended operation remain unverified.
 - Linux desktop QA used a virtual display; the test runner adds `--no-sandbox` only when running as root in that restricted test environment. The shipped application configuration retains renderer sandboxing and should be run as a normal user.
 - One upstream Starlette/httpx deprecation warning was emitted by the backend test client. The production build also emitted a bundle-size advisory. Neither check failed.
 
 ## Before real use
 
-Run the PostgreSQL CI job, configure the always-on server and sender domain, enroll staff MFA, test a recipient allowlist, verify HTTPS, sign/distribute target installers, rehearse restoration, and reconcile one pilot reminder cycle with accounts staff.
+Configure the always-on server and sender domain, enroll staff MFA, test a recipient allowlist, verify HTTPS and production database connectivity, sign/distribute target installers, rehearse restoration, and reconcile one pilot reminder cycle with accounts staff.
 
 ## Windows and Ubuntu release 0.1.1
 
 The cross-platform workflow adds native Windows and Ubuntu 24.04 x64 jobs. Each installs Python/Node dependencies, runs portable launcher regression checks, tests the local backend, builds the native installers, installs the Windows/Ubuntu desktop package, and runs the real Electron payment/reminder journey. Successful installer artifacts are uploaded only after that platform's checks pass.
 
-The original results above describe the initial 0.1.0 implementation. For current 0.1.1 results and downloads, use the [Windows and Ubuntu desktop workflow](https://github.com/iprabhatmishra25/Payment-Reminder-App/actions/workflows/desktop-release.yml). Its run result is the evidence of platform verification; workflow configuration alone is not a test result. The separate PostgreSQL CI job remains enabled.
+Both native jobs passed on commit `bf2592f01afb7168d30a4c6e8743b356aabbc7c9` in [desktop run 40864414915](https://github.com/iprabhatmishra25/Payment-Reminder-App/actions/runs/40864414915). Their logs confirm login, actual pie sectors, company creation, invoice creation, partial payment balances, durable reminder queueing, short-window Settings, schedule persistence, and logout with no uncaught renderer errors. Each platform also passed 40 backend tests and 8 portable launcher tests.
+
+The separate [PostgreSQL/application run 40864415041](https://github.com/iprabhatmishra25/Payment-Reminder-App/actions/runs/40864415041) passed on the same commit, including all 40 PostgreSQL tests, Alembic migration, TypeScript validation, and the production UI build.
+
+Download the tested [Windows installer](https://github.com/iprabhatmishra25/Payment-Reminder-App/actions/runs/40864414915/artifacts/12892473672) or [Ubuntu packages](https://github.com/iprabhatmishra25/Payment-Reminder-App/actions/runs/40864414915/artifacts/12892299835). Artifact downloads may require GitHub sign-in and are retained for 30 days, until 28 November 2026. The [desktop workflow](https://github.com/iprabhatmishra25/Payment-Reminder-App/actions/workflows/desktop-release.yml) can build fresh artifacts. Production server deployment and live email delivery are separate from desktop platform verification.
